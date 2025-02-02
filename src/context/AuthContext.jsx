@@ -23,14 +23,14 @@ export function AuthProvider({ children }) {
     const login = async (credentials) => {
         try {
             const {data} = await loginRequest(credentials);
-            console.log(data)
             Cookies.set("token", data.token, { expires: 7 });
             localStorage.setItem("user", JSON.stringify(data.user));
             setUser(data.user);
             return { success: true, message: data.message };
         } catch (error) {
-            console.log(error)
             setError([error.response.data.message]);
+            return({success: false})
+
         }
     };
 
@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
             return { success: true, message: data.message };
         } catch (error) {
             setError(error.response.data.message);
+            return({success: false})
         }
     };
 

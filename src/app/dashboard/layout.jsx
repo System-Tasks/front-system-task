@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { TaskProvider } from "@/context/TasksContext";
-import { ProjectsProvider } from "@/context/ProjectsContext";
 import Cookies from "js-cookie";
 
 function DashboardLayout({ children }) {

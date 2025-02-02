@@ -10,7 +10,7 @@ function RegisterPage() {
 
     const { register, handleSubmit, formState: {
         errors
-    } } = useForm()
+    }, watch } = useForm()
 
     const { user, signUp, error: registerErrors } = useAuth();
     const router = useRouter();
@@ -26,17 +26,27 @@ function RegisterPage() {
     const [success, setSuccess] = useState('')
 
     const onSubmit = handleSubmit(async (values) => {
+        
         const res = await signUp(values)
 
-        setSuccess(res.message)
-
         if(res.success) {
-            setTimeout(() => {
-                router.push('/login');
-            }, 3000)
-        } 
+
+            setSuccess(res.message)
+    
+            if(res.success) {
+                setTimeout(() => {
+                    router.push('/login');
+                }, 3000)
+            } 
+        }
+
     })
 
+
+    const getPasswordValue = () => {
+        const passwordValue = watch("password");
+        return passwordValue || '';
+    };
 
 
     return (
@@ -102,9 +112,10 @@ function RegisterPage() {
                                 errors.password && <p className='text-red-500'>La contraseña es obligatoria</p>
                             }
                         </div>
+
                         <button
-                            type="submit"
-                            className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition"
+                            type="submit" disabled={getPasswordValue().length < 6}
+                            className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:hover:bg-blue-500"
                         >
                             Registro
                         </button>

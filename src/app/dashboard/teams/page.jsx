@@ -20,39 +20,39 @@ export default function TeamsPage() {
     );
   };
 
-
   const [modalCreateTeam, setModalCreateTeam] = useState(false)
   const [error, setError] = useState([])
 
 
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    setUser(storedUser);
+  }, []);
 
   useEffect(() => {
 
-    const token = Cookies.get('token')
-    const userLocal = JSON.parse(localStorage.getItem('user'))
-    console.log(userLocal)
-    setUser(userLocal)
-
-    const getUsers = async () => {
-      try {
-        const res = await getAllUsers(token)
-
-        const usersRoleUser = res.data.data.filter(m => m.role == 'USER' && m.id != userLocal.id)
-        const usersRoleMember = res.data.data.filter(m => m.role != 'USER' && m.teamId == userLocal.team.id)
-
-        const users = userLocal.team ? usersRoleMember : usersRoleUser
-        console.log("ANDNANDADNAS", users)
-
-        setUsers(users)
-      } catch (error) {
-        console.log(error)
-      }
+    if (user) {
+      getUsers()
     }
 
-    getUsers()
+  }, [user])
 
-  }, [])
 
+  const getUsers = async () => {
+    const token = Cookies.get('token')
+
+    try {
+      const res = await getAllUsers(token)
+
+      const users = user.team ? 
+        res.data.data.filter(m => m.role != 'USER' && m.teamId == user.team.id)
+      : res.data.data.filter(m => m.role == 'USER' && m.id != user.id)
+
+      setUsers(users)
+    } catch (error) {
+      console.log(error)
+    }
+}
 
   const openModalCreateTeam = () => {
     setModalCreateTeam(true)
@@ -69,15 +69,23 @@ export default function TeamsPage() {
       id: user.id
     }
     try {
-      //CREAR TEAM
       const res = await createTeamRequest(request, token);
-      console.log(res.data.id)
 
       const users = res.data.users;
 
       const userSession = users.find(u => u.id == user.id)
 
       setUser({ ...user, role: userSession.role, team: {id:res.data.id} })
+
+      setUsers(users)
+
+
+      const userLocalStorage = JSON.parse(localStorage.getItem("user"))
+
+      userLocalStorage.role = userSession.role
+      userLocalStorage.team = {id:res.data.id}
+
+      localStorage.setItem("user", JSON.stringify(userLocalStorage))
 
     } catch (error) {
       
@@ -87,6 +95,8 @@ export default function TeamsPage() {
     setSelectedUsers([])
     setIsOpen(false)
   }
+
+  if (!user) return <p>Cargando usuario...</p>;
 
   return (
 
@@ -112,7 +122,13 @@ export default function TeamsPage() {
                   <Plus size={22} strokeWidth={1.25} />
                 </button>
               </div>
+              <div className="flex justify-center items-center p-4">
+                  <p className="text-lg">No tienes equipo</p>
+              </div>
             </div>
+
+            
+            
           ) : 
           
           <div className="mt-6">
@@ -183,20 +199,32 @@ export default function TeamsPage() {
                       <span>{user.name}</span>
                     </div>
                   ))}
+
+                  {users.length == 0 && (<span>No hay usuarios disponibles</span>) }
                 </div>
               )}
 
               <div className="mt-2 text-sm text-gray-700">
-                <strong>Seleccionados:</strong>{" "}
-                {selectedUsers.length > 0 ? selectedUsers.join(", ") : "Ninguno"}
+                <strong>Seleccionados: </strong> 
+                  {
+                  selectedUsers.length > 0 ? 
+                    users.filter(user => selectedUsers.includes(user.id))
+                      .map((user, index, array) => (
+                        <span key={user.id}>
+                          {user.name}
+                          {index < array.length - 1 ? ", " : "."}
+                        </span> 
+                      ))
+                  : " Ninguno"
+                  }
               </div>
             </div>
 
 
 
             <button
-              type="submit"
-              className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition"
+              type="submit" disabled={selectedUsers.length == 0}
+              className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:hover:bg-blue-500"
             >
               Aceptar
             </button>

@@ -1,13 +1,15 @@
 "use client"
 
+import { getAllUsers } from "@/api/auth";
+import { getAllCommentsRequest } from "@/api/comments";
 import { createTaskRequest, deleteTasksRequest, getTasksRequest } from "@/api/tasks"
 import Modal from "@/components/Modal";
 import TaskCard from "@/components/TaskCard";
 import Cookies from "js-cookie";
-import { Plus } from "lucide-react";
-import { useParams, usePathname } from "next/navigation";
+import { Bell, Plus } from "lucide-react";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react"
-import { set, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 function ProjectDetailPage() {
 
@@ -21,12 +23,20 @@ function ProjectDetailPage() {
     const params = useParams();
     const [isOpenModal, setIsOpenModal] = useState(false)
 
+    const [openNotification, setOpenNotification] = useState(false)
+
+    const [comments, setComments] = useState([])
+    const [users, setUsers] = useState([])
+    const [user, setUser] = useState(null)
+
     const getTasks = async () => {
+        
         try {
             const res = await getTasksRequest(token, params.projectId)
-            console.log(res)
+            
             setTasks(res.data)
             setFilteredTasks(res.data)
+
         } catch (error) {
             console.log(error)
         }
@@ -34,19 +44,65 @@ function ProjectDetailPage() {
 
     useEffect(() => {
 
-        console.log("TOKEN : ", token)
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        setUser(storedUser);
 
-        getTasks();
-
+        getTasks().then(() => {
+            getUsers()
+        });
     }, [])
 
+    useEffect(() => {
+        if (tasks.length > 0) {
+            getComments();
+        }
+    }, [tasks]);
+
+
+    const getUsers = async () => {
+        const token = Cookies.get('token')
+
+        try {
+            const user = JSON.parse(localStorage.getItem('user'))
+            const res = await getAllUsers(token)
+
+            const users = res.data.data.filter(m => m.role != 'USER' && m.teamId == user.team.id)
+
+            setUsers(users)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const getComments = async () => {
+        const token = Cookies.get('token')
+
+        try {
+            const res = await getAllCommentsRequest(token)
+
+            const commentsResponse = res.data;
+
+            const filteredComments = commentsResponse.filter(comment =>
+                tasks.some(task => task.id === comment.taskId && comment.userId != user.id)
+            );
+
+            setComments(filteredComments)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
     const openModalCreateTask = () => {
-        console.log("openModalCreateProject")
         setIsOpenModal(true);
 
     }
 
+    const updateTasks = () => {
+        getTasks();
+    }
+
     const onSubmit = handleSubmit(async (values) => {
+
         const request = {
             title: values.title,
             description: values.description,
@@ -56,7 +112,6 @@ function ProjectDetailPage() {
 
         try {
             const res = await createTaskRequest(request, token);
-            console.log(res.data)
             reset();
             getTasks();
 
@@ -81,10 +136,43 @@ function ProjectDetailPage() {
         }
     }
 
+
+    if (!tasks) return <p>Cargando tareas...</p>;
+
     return (
         <div>
-            <h1 className="text-2xl font-bold">Detalles del proyecto</h1>
-            <p className="mt-2">Aquí puedes ver los detalles del proyecto.</p>
+            <div className="flex justify-between item-center">
+                <div>
+
+                    <h1 className="text-2xl font-bold">Detalles del proyecto</h1>
+                    <p className="mt-2">Aquí puedes ver los detalles del proyecto.</p>
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setOpenNotification(!openNotification)}
+                        className="p-2 rounded-full bg-blue-500 text-white focus:outline-none"
+                    >
+                        <Bell size={22} strokeWidth={1.25} />
+                    </button>
+
+                    {openNotification && (
+                        <div className="absolute top-full right-0 w-72 bg-white shadow-lg rounded-md border border-gray-300 overflow-y-auto h-96">
+                            <div className="p-4">
+                                <h3 className="font-bold text-lg mb-2">Notificaciones</h3>
+                                <ul className="space-y-2">
+                                    {comments.map((comment, index) => (
+                                        <li key={index} className="p-2 border-b border-gray-200">
+                                            <span className="font-bold">{users.find(i => i.id == comment.userId)?.name}</span> realizó un comentario en la tarea: <span className="font-bold">{tasks.find(i => i.id == comment.taskId)?.title}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+            </div>
 
             <div className="mt-4 p-4 bg-white rounded-xl flex-1">
 
@@ -111,12 +199,15 @@ function ProjectDetailPage() {
                                 type="text"
                                 placeholder="Buscar tarea..."
                                 className="p-2 border rounded w-full mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                
+
                                 onChange={(e) => {
                                     setFilteredTasks(
                                         tasks.filter(task => {
-                                            return task.title.toLowerCase().includes(e.target.value.toLowerCase()) || 
-                                            task.description.toLowerCase().includes(e.target.value.toLowerCase())
+                                            return task.title.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                                                task.description.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                                                task.status == 'PENDING' && 'Pendiente'.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                                                task.status == 'COMPLETED' && 'Completado'.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                                                task.status == 'PROGRESS' && 'En progreso'.toLowerCase().includes(e.target.value.toLowerCase())
                                         })
                                     )
                                 }}
@@ -124,8 +215,8 @@ function ProjectDetailPage() {
 
                             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 {
-                                    filteredTasks.map((task, index) => (
-                                        <TaskCard key={task.id} task={task} deleteTask={deleteTask}>
+                                    filteredTasks.map((task) => (
+                                        <TaskCard key={task.id} taskProp={task} deleteTask={deleteTask} updateTasks={updateTasks}>
 
                                         </TaskCard>
                                     ))
@@ -180,11 +271,14 @@ function ProjectDetailPage() {
                         </div>
 
                         <div>
+
                             <label className="block text-gray-700 font-medium">Fecha limite *</label>
+
                             <input
-                                type="text"
+                                type="date"
+                                id="fecha"
+                                name="fecha"
                                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Ingresa la fecha limite"
                                 {...register("dateLimit", { required: true })}
                             />
                             {

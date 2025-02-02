@@ -21,6 +21,7 @@ function ProjectsPage() {
     const [projects, setProjects] = useState([])
     const [isOpenModal, setIsOpenModal] = useState(false)
     const [error, setError] = useState([])
+    const [alert, setAlert] = useState(null)
     const [user, setUser] = useState(null)
 
     const token = Cookies.get('token')
@@ -28,8 +29,6 @@ function ProjectsPage() {
     const router = useRouter();
 
     const getProjects = async () => {
-
-        console.log(user)
 
         try {
             const res = await getProjectsRequest(token, user.team.id)
@@ -50,16 +49,31 @@ function ProjectsPage() {
         }
     }, [user]);
 
+    useEffect(() => {
+        if (alert || error) {
+            const timer = setTimeout(() => {
+                setAlert(null)
+                setError([])
+            }, 5000)
+
+            return () => clearTimeout(timer)
+        }
+    }, [alert, error])
+
 
 
     const openModalCreateProject = () => {
-        console.log("openModalCreateProject")
+
+        if(!user.team) {
+            setAlert("No puedes crear proyectos sin un equipo asignado")
+            return;
+        }
+
         setIsOpenModal(true);
 
     }
 
     const selectProject = (item) => {
-        console.log("item: ", item)
         router.push(`/dashboard/projects/${item.id}`)
     }
 
@@ -73,15 +87,16 @@ function ProjectsPage() {
 
         try {
             const res = await createProjectRequest(request, token);
-            console.log(res.data)
-            reset();
             getProjects();
+            setIsOpenModal(false);
 
 
         } catch (error) {
             console.log(error)
+            setError(error.response.data.message)
+
         }
-        setIsOpenModal(false);
+        reset();
 
     });
 
@@ -93,6 +108,15 @@ function ProjectsPage() {
                 <h1 className="text-[22px] font-semibold">Gestión Proyectos</h1>
                 <p className="text-sm leading-tight">Módulo para la gestión de proyectos.</p>
             </div>
+
+            {alert ? 
+                <div className='bg-red-500 rounded-md p-2 my-0.5 text-white text-center'>
+                    {alert}
+                </div>
+
+                : null
+            }
+
 
             <div className="mt-4 p-4 bg-white rounded-xl flex-1">
 
@@ -107,6 +131,7 @@ function ProjectsPage() {
                         <Plus size={22} strokeWidth={1.25} />
                     </button>
                 </div>
+
 
 
                 {

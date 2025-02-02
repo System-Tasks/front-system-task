@@ -10,7 +10,7 @@ function LoginPage() {
 
     const { register, handleSubmit, formState: {
         errors
-    } } = useForm()
+    }, watch } = useForm()
 
     const router = useRouter();
     const { user, login, error: loginError } = useAuth();
@@ -30,6 +30,10 @@ function LoginPage() {
         } 
     })
 
+    const getPasswordValue = () => {
+        const passwordValue = watch("password");
+        return passwordValue || '';
+    };
     
 
 
@@ -72,8 +76,8 @@ function LoginPage() {
                         }
                     </div>
                     <button
-                        type="submit"
-                        className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition"
+                        type="submit" disabled={getPasswordValue().length < 6}
+                        className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:hover:bg-blue-500"
                     >
                         Iniciar Sesión
                     </button>

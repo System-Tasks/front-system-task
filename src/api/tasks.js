@@ -6,6 +6,6 @@ export const getTaskRequest = (id, token) => axios.get(`/tasks/${id}`, { headers
 
 export const createTaskRequest = (task, token) => axios.post(`/tasks`, task, { headers: { Authorization: `Bearer ${token}` } })
 
-export const updateTaskRequest = (id, task, token) => axios.put(`/tasks/${id}`, task, { headers: { Authorization: `Bearer ${token}` } })
+export const updateTaskRequest = (id, task, token) => axios.patch(`/tasks/${id}`, task, { headers: { Authorization: `Bearer ${token}` } })
 
 export const deleteTasksRequest = (id, token) => axios.delete(`/tasks/${id}`, { headers: { Authorization: `Bearer ${token}` } })
